@@ -302,12 +302,6 @@ export const Profile: FC = () => {
             <Dialog
                 open={openDialog}
                 onClose={() => setOpenDialog(false)}
-                PaperProps={{
-                    sx: {
-                        borderRadius: 3,
-                        padding: 1
-                    }
-                }}
             >
                 <DialogTitle sx={{ color: '#ff4444' }}>
                     Удалить аккаунт?
