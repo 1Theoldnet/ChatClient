@@ -9,22 +9,12 @@ import {
     Avatar,
     Badge,
     Button,
-    CircularProgress,
-    Menu,
-    MenuItem,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    ListItemIcon,
-    ListItemText
+    CircularProgress
 } from "@mui/material"
 import {
     Send as SendIcon,
     ArrowBack as BackIcon,
-    MoreVert as MenuIcon,
-    Edit as EditIcon,
-    Delete as DeleteIcon
+    MoreVert as MenuIcon
 } from "@mui/icons-material"
 import { useNavigate, useParams } from "react-router-dom"
 import { socket } from "../../utils"
@@ -45,22 +35,10 @@ export const Chat: FC<ChatProps> = ({ currentUser }) => {
     const [otherUser, setOtherUser] = useState<User | null>(null)
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const [otherUserTyping, setOtherUserTyping] = useState(false)
-    const typingTimeoutRef = useRef<NodeJS.Timeout>()
+    const typingTimeoutRef = useRef<any>(null)
     const [isTyping, setIsTyping] = useState(false)
     const [isUserOnline, setIsUserOnline] = useState(false)
     const [onlineUsers, setOnlineUsers] = useState<number[]>([])
-    
-    // Для редактирования сообщения
-    const [editingMessage, setEditingMessage] = useState<Message | null>(null)
-    const [editText, setEditText] = useState("")
-    const [editDialogOpen, setEditDialogOpen] = useState(false)
-    
-    // Для меню сообщения
-    const [contextMenu, setContextMenu] = useState<{
-        mouseX: number;
-        mouseY: number;
-        message: Message | null;
-    } | null>(null)
 
     // Проверка авторизации
     useEffect(() => {
@@ -92,12 +70,12 @@ export const Chat: FC<ChatProps> = ({ currentUser }) => {
                 if (!data.isGroup && data.users) {
                     const otherUserId = data.users.find((id: number) => id !== currentUser.id)
                     if (otherUserId) {
-                        const userResponse = await fetch(`${API}users/${otherUserId}`)
+                        const userResponse = await fetch(`https://chatserver-ood9.onrender.com/chat/users/${otherUserId}`)
                         const userData = await userResponse.json()
                         setOtherUser(userData)
                         
                         // Проверяем онлайн статус сразу после загрузки
-                        const onlineResponse = await fetch(`${API}users/online`)
+                        const onlineResponse = await fetch(`https://chatserver-ood9.onrender.com/chat/users/online`)
                         const onlineData = await onlineResponse.json()
                         setOnlineUsers(onlineData)
                         setIsUserOnline(onlineData.includes(otherUserId))
@@ -132,22 +110,6 @@ export const Chat: FC<ChatProps> = ({ currentUser }) => {
             }
         }
 
-        const handleMessageEdited = ({ chatId: receivedChatId, messageId, newText }: { chatId: number; messageId: number; newText: string }) => {
-            if (receivedChatId === parseInt(chatId!)) {
-                setMessages(prev => prev.map(msg => 
-                    msg.id === messageId ? { ...msg, text: newText, isEdited: true } : msg
-                ))
-            }
-        }
-
-        const handleMessageDeleted = ({ chatId: receivedChatId, messageId }: { chatId: number; messageId: number }) => {
-            if (receivedChatId === parseInt(chatId!)) {
-                setMessages(prev => prev.map(msg => 
-                    msg.id === messageId ? { ...msg, text: "Сообщение удалено", isDeleted: true } : msg
-                ))
-            }
-        }
-
         const handleUserTyping = ({ userId, isTyping: typing }: { userId: number; isTyping: boolean }) => {
             if (userId !== currentUser?.id) {
                 setOtherUserTyping(typing)
@@ -162,15 +124,11 @@ export const Chat: FC<ChatProps> = ({ currentUser }) => {
         }
 
         socket.on('newMessage', handleNewMessage)
-        socket.on('messageEdited', handleMessageEdited)
-        socket.on('messageDeleted', handleMessageDeleted)
         socket.on('userTyping', handleUserTyping)
         socket.on('usersOnline', handleUsersOnline)
 
         return () => {
             socket.off('newMessage', handleNewMessage)
-            socket.off('messageEdited', handleMessageEdited)
-            socket.off('messageDeleted', handleMessageDeleted)
             socket.off('userTyping', handleUserTyping)
             socket.off('usersOnline', handleUsersOnline)
         }
@@ -209,90 +167,6 @@ export const Chat: FC<ChatProps> = ({ currentUser }) => {
             console.error("Ошибка:", error)
         } finally {
             setSending(false)
-        }
-    }
-
-    // Редактирование сообщения
-    const handleEditMessage = async () => {
-        if (!editingMessage || !editText.trim() || !currentUser || !chatId) return
-
-        try {
-            const response = await fetch('https://chatserver-ood9.onrender.com/chats/edit-message', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    chatId: parseInt(chatId),
-                    messageId: editingMessage.id,
-                    userId: currentUser.id,
-                    text: editText
-                })
-            })
-            
-            const data = await response.json()
-            
-            if (data.success) {
-                setEditDialogOpen(false)
-                setEditingMessage(null)
-                setEditText("")
-            }
-        } catch (error) {
-            console.error("Ошибка редактирования:", error)
-        }
-    }
-
-    // Удаление сообщения
-    const handleDeleteMessage = async (message: Message) => {
-        if (!currentUser || !chatId) return
-
-        try {
-            const response = await fetch('https://chatserver-ood9.onrender.com/chats/delete-message', {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    chatId: parseInt(chatId),
-                    messageId: message.id,
-                    userId: currentUser.id
-                })
-            })
-            
-            const data = await response.json()
-            
-            if (data.success) {
-                setContextMenu(null)
-            }
-        } catch (error) {
-            console.error("Ошибка удаления:", error)
-        }
-    }
-
-    // Открыть меню редактирования
-    const openEditMenu = (event: React.MouseEvent, message: Message) => {
-        event.preventDefault()
-        if (message.userId === currentUser?.id && !message.isDeleted) {
-            setContextMenu({
-                mouseX: event.clientX - 2,
-                mouseY: event.clientY - 4,
-                message
-            })
-        }
-    }
-
-    const handleCloseMenu = () => {
-        setContextMenu(null)
-    }
-
-    const handleEditClick = () => {
-        if (contextMenu?.message) {
-            setEditingMessage(contextMenu.message)
-            setEditText(contextMenu.message.text)
-            setEditDialogOpen(true)
-            handleCloseMenu()
-        }
-    }
-
-    const handleDeleteClick = () => {
-        if (contextMenu?.message) {
-            handleDeleteMessage(contextMenu.message)
         }
     }
 
@@ -442,7 +316,6 @@ export const Chat: FC<ChatProps> = ({ currentUser }) => {
                         }}
                     >
                         <Box
-                            onContextMenu={(e) => openEditMenu(e, message)}
                             sx={{
                                 maxWidth: '70%',
                                 bgcolor: message.userId === currentUser?.id ? '#1976d2' : '#ffffff',
@@ -452,21 +325,13 @@ export const Chat: FC<ChatProps> = ({ currentUser }) => {
                                     ? '18px 18px 4px 18px' 
                                     : '18px 18px 18px 4px',
                                 position: 'relative',
-                                boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                                cursor: message.userId === currentUser?.id && !message.isDeleted ? 'context-menu' : 'default',
-                                opacity: message.isDeleted ? 0.7 : 1,
-                                fontStyle: message.isDeleted ? 'italic' : 'normal'
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
                             }}
                         >
                             <Typography variant="body1" sx={{ wordWrap: 'break-word' }}>
                                 {message.text}
                             </Typography>
                             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1, mt: 0.5 }}>
-                                {message.isEdited && !message.isDeleted && (
-                                    <Typography variant="caption" sx={{ opacity: 0.5, fontSize: '0.6rem' }}>
-                                        (ред.)
-                                    </Typography>
-                                )}
                                 <Typography 
                                     variant="caption" 
                                     sx={{ 
@@ -497,54 +362,6 @@ export const Chat: FC<ChatProps> = ({ currentUser }) => {
                 )}
                 <div ref={messagesEndRef} />
             </Box>
-
-            {/* Контекстное меню для сообщения */}
-            <Menu
-                open={contextMenu !== null}
-                onClose={handleCloseMenu}
-                anchorReference="anchorPosition"
-                anchorPosition={
-                    contextMenu !== null
-                        ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
-                        : undefined
-                }
-            >
-                <MenuItem onClick={handleEditClick}>
-                    <ListItemIcon>
-                        <EditIcon fontSize="small" />
-                    </ListItemIcon>
-                    <ListItemText>Редактировать</ListItemText>
-                </MenuItem>
-                <MenuItem onClick={handleDeleteClick}>
-                    <ListItemIcon>
-                        <DeleteIcon fontSize="small" />
-                    </ListItemIcon>
-                    <ListItemText>Удалить</ListItemText>
-                </MenuItem>
-            </Menu>
-
-            {/* Диалог редактирования сообщения */}
-            <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
-                <DialogTitle>Редактировать сообщение</DialogTitle>
-                <DialogContent>
-                    <TextField
-                        autoFocus
-                        margin="dense"
-                        fullWidth
-                        value={editText}
-                        onChange={(e) => setEditText(e.target.value)}
-                        multiline
-                        rows={3}
-                        variant="outlined"
-                    />
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setEditDialogOpen(false)}>Отмена</Button>
-                    <Button onClick={handleEditMessage} variant="contained" disabled={!editText.trim()}>
-                        Сохранить
-                    </Button>
-                </DialogActions>
-            </Dialog>
 
             {/* Поле ввода сообщения */}
             <Box sx={{ 
