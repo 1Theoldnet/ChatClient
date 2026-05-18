@@ -38,7 +38,7 @@ export const Chat: FC<ChatProps> = ({ currentUser }) => {
     const typingTimeoutRef = useRef<any>(null)
     const [isTyping, setIsTyping] = useState(false)
     const [isUserOnline, setIsUserOnline] = useState(false)
-    const [onlineUsers, setOnlineUsers] = useState<number[]>([])
+    const [_, setOnlineUsers] = useState<number[]>([])
 
     // Проверка авторизации
     useEffect(() => {
