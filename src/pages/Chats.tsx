@@ -452,7 +452,7 @@ export const Chats: FC<ChatsProps> = ({ currentUser, setCurrentUser }) => {
                 return (
                   <ListItem key={user.id} onClick={() => { if (chatType === 'private') { selectUserForPrivate(user.id) } else { toggleUserForGroup(user.id) } }} sx={{ cursor: 'pointer', borderRadius: 2, mb: 0.5, bgcolor: isSelected ? 'action.selected' : 'transparent', '&:hover': { bgcolor: 'action.hover' } }}>
                     <ListItemAvatar>
-                      <Badge overlap="circular" anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} variant="dot" sx={{ '& .MuiBadge-badge': { bgcolor: user.isOnline ? '#44b700' : '#9e9e9e' } }}>
+                      <Badge overlap="circular" anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} variant="dot" sx={{ '& .MuiBadge-badge': { bgcolor: '#9e9e9e' } }}>
                         <Avatar src={user.avatarBase64}>{user.name.charAt(0)}</Avatar>
                       </Badge>
                     </ListItemAvatar>
